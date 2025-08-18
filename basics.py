@@ -1,7 +1,7 @@
 import numpy as np
 
 abc = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
-board = []
+board = []  # table of all tiles
 
 
 def create(tile, board0):  # ensures tiles arent duplicated
@@ -25,7 +25,7 @@ class Tile:
         self.row = row
         self.column = column
         self.occupied = False
-        self.occupant = 0
+        self.occupant = 0  # arbitrary definition
 
     def distance(self, tile):  # Euclidean distance between tiles
         return float(((self.row - tile.row)**2 + (self.column - tile.column)**2)**0.5)
@@ -59,8 +59,8 @@ class Tile:
 
 
 class Piece:
-    def __init__(self, row, column, move, color, name):
-        self.tile = create(Tile(row, column), board)
+    def __init__(self, tile, move, color, name):
+        self.tile = create(tile, board)
         self.tile.occupied = True
         self.tile.occupant = self
         self.move = move  # coordinates [x,y] of possible moves
@@ -103,7 +103,7 @@ class Piece:
 
 
 class Knight(Piece):
-    def where_move(self):  # enables jumping for knights
+    def where_move(self):
         ret = []
         to_rmv = []
 
@@ -111,7 +111,7 @@ class Knight(Piece):
             dest = self.tile + Tile(cord[0], cord[1])
             if dest.bounded():
                 ret.append(dest)
-        # attacking
+        # attacking (with allowed jumping)
         for tile in ret:
             if tile.occupied and tile.occupant.color == self.color:  # no friendly-fire
                 to_rmv.append(tile)
@@ -121,13 +121,24 @@ class Knight(Piece):
 
 
 class Pawn(Piece):
+    def __init__(self, tile, move, color, name):
+        super().init(tile, move, color, name)
+        self.first_move = True
+        self.copy_move = self.move.copy()
+
     def where_move(self):
+        # allowing pawns to move two spaces in first move
+        if self.first_move():
+            self.move = np.array(self.move.tolist() + self.copy_move.tolist())
+        else:
+            self.move = self.copy_move
+        # standard
         ret = []
         for cord in self.move:  # list of [x,y] coordinates
             dest = self.tile + Tile(cord[0], cord[1])
             if dest.bounded() and not dest.occupied:
                 ret.append(dest)
-
+        # pawn attack
         if self.color:  # white
             attack_move = np.array([[1, 1], [-1, 1]])
         else:  # black
@@ -137,27 +148,12 @@ class Pawn(Piece):
             if dest_attack.occupied:
                 if dest_attack.occupant.color != self.color:
                     ret.append(dest_attack)
-
         return ret
 
+    def occupy(self, tile):
+        super().occupy(self, tile)
+        self.first_move = False
 
-move_wl = np.array([[i, j] for i in range(-7, 8) for j in range(-7, 8)])
-move_wl = move_wl[ (move_wl[:, 0] == 0) | (move_wl[:, 1] == 0) ]
-move_wl = move_wl[ (move_wl[:, 0] != 0) | (move_wl[:, 1] != 0) ]
-rook_wl = Piece(row=0, column=0, move=move_wl, color=1, name="R")
 
-pawn_A2 = Piece(row=0, column=1, move=np.array([[0, 1]]), color=0, name='')
-pawn_B2 = Piece(row=1, column=1, move=np.array([[0, 1]]), color=1, name='')
+print("Hello World!")
 
-A1 = to_tile('A1')
-A3 = to_tile('A3')
-
-print(A1.printout())
-
-pawn_A2.occupy(A3)
-
-print('\n')
-
-rook_wl.occupy(A3)
-
-print('\n')
