@@ -44,12 +44,15 @@ class Tile:
     def __hash__(self):
         return hash((self.row, self.column))
 
+    def __str__(self):
+        return self.name()
+
     def gt(self, tile1, tile2):
         if (self.distance(tile1) > self.distance(tile2)) and (tile1.distance(tile2) <= self.distance(tile1)):
             return True
         return False
 
-    def printout(self):
+    def name(self):
         return abc[self.row] + str(self.column + 1)
 
     def color(self):  # White = 1, Black = 0
@@ -67,6 +70,9 @@ class Piece:
         self.color = color  # white = 1, black = 0
         self.is_dead = False
         self.name = name
+
+    def __str__(self):
+        return self.name + self.tile.name()
 
     def where_move(self):
         ret = []
@@ -93,9 +99,9 @@ class Piece:
         if tile in self.where_move():
             if tile.occupied:
                 tile.occupant.is_dead = True
-                print(self.name + "x" + tile.printout())
+                print(self.name + "x" + tile.name())
             else:
-                print(self.name + tile.printout())
+                print(self.name + tile.name())
 
             tile.occupied = True
             tile.occupant = self
@@ -122,7 +128,7 @@ class Knight(Piece):
 
 class Pawn(Piece):
     def __init__(self, tile, move, color, name):
-        super().init(tile, move, color, name)
+        super().__init__(tile, move, color, name)
         self.first_move = True
         self.copy_move = self.move.copy()
 
