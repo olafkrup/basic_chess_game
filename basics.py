@@ -1,7 +1,14 @@
 import numpy as np
+import pygame
+
 
 abc = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 board = []  # table of all tiles
+
+size = 800
+tile_size = 100
+
+dead = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
 
 
 def create(tile, board0):  # ensures tiles arent duplicated
@@ -21,11 +28,18 @@ def to_tile(notation):  # converts a chess notation into a tile
 
 
 class Tile:
-    def __init__(self, row, column):
+    def __init__(self, row, column, image=dead):
         self.row = row
         self.column = column
         self.occupied = False
         self.occupant = 0  # arbitrary definition
+        self.image = image
+
+        pos = (self.row * tile_size, size - self.column * tile_size)
+        self.rect = self.image.get_rect(bottomleft = pos)
+
+        self.to_move = False
+        self.to_occupy = False
 
     def distance(self, tile):  # Euclidean distance between tiles
         return float(((self.row - tile.row)**2 + (self.column - tile.column)**2)**0.5)
@@ -62,14 +76,18 @@ class Tile:
 
 
 class Piece:
-    def __init__(self, tile, move, color, name):
+    def __init__(self, tile, move, color, name, image=dead):
         self.tile = create(tile, board)
         self.tile.occupied = True
         self.tile.occupant = self
-        self.move = move  # coordinates [x,y] of possible moves
+        self.move = move.tolist()  # coordinates [x,y] of possible moves
         self.color = color  # white = 1, black = 0
         self.is_dead = False
         self.name = name
+        self.image = image
+
+        tile_center = self.tile.rect.center
+        self.rect = self.image.get_rect(center=tile_center)
 
     def __str__(self):
         return self.name + self.tile.name()
@@ -99,6 +117,7 @@ class Piece:
         if tile in self.where_move():
             if tile.occupied:
                 tile.occupant.is_dead = True
+                tile.occupant.image = dead
                 print(self.name + "x" + tile.name())
             else:
                 print(self.name + tile.name())
@@ -127,15 +146,18 @@ class Knight(Piece):
 
 
 class Pawn(Piece):
-    def __init__(self, tile, move, color, name):
-        super().__init__(tile, move, color, name)
+    def __init__(self, tile, move, color, name, image=dead):
+        super().__init__(tile, move, color, name, image)
         self.first_move = True
         self.copy_move = self.move.copy()
 
     def where_move(self):
         # allowing pawns to move two spaces in first move
-        if self.first_move():
-            self.move = np.array(self.move.tolist() + self.copy_move.tolist())
+        if self.first_move:
+            if self.color:
+                self.move.append([0, 2])
+            else:
+                self.move.append([0, -2])
         else:
             self.move = self.copy_move
         # standard
