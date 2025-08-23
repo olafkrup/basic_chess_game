@@ -3,8 +3,11 @@ import basics
 import pygame
 
 abc = basics.abc
+pieces = []
 
 board_tiles = []
+
+# images
 
 black = pygame.Surface((100, 100))
 black.fill('black')
@@ -12,15 +15,57 @@ black.fill('black')
 white = pygame.Surface((100, 100))
 white.fill('white')
 
-# tiles
+black2 = pygame.Surface((100, 100))
+black2.fill((210, 140, 69))
 
+white2 = pygame.Surface((100, 100))
+white2.fill((255, 207, 159))
+
+move_img = pygame.Surface((100, 100), pygame.SRCALPHA)
+move_img.fill((0, 0, 0, 0))
+pygame.draw.circle(move_img, (90, 255, 67, 150), (50, 50), 25)
+
+moving_img = pygame.image.load('images/moving_img.png')
+moving_img.set_alpha(150)
+
+moved_img = pygame.image.load('images/moved_img.png')
+moved_img.set_alpha(150)
+
+attack_img = pygame.image.load('images/attack_img.png')
+attack_img.set_alpha(150)
+
+attacked_img = pygame.image.load('images/attacked_img.png')
+attacked_img.set_alpha(150)
+
+pawn_img1 = pygame.image.load('images/white_pawn.png')
+pawn_img2 = pygame.image.load('images/black_pawn.png')
+
+rook_img1 = pygame.image.load('images/white_rook.png')
+rook_img2 = pygame.image.load('images/black_rook.png')
+
+knight_img1 = pygame.image.load('images/white_knight.png')
+knight_img2 = pygame.image.load('images/black_knight.png')
+
+bishop_img1 = pygame.image.load('images/white_bishop.png')
+bishop_img2 = pygame.image.load('images/black_bishop.png')
+
+queen_img1 = pygame.image.load('images/white_queen.png')
+queen_img2 = pygame.image.load('images/black_queen.png')
+
+king_img1 = pygame.image.load('images/white_king.png')
+king_img2 = pygame.image.load('images/black_king.png')
+
+# text
+
+
+# tile definition
 for row in range(8):
     for column in range(8):
         tile = basics.create(basics.Tile(row, column), basics.board)
         if tile.color():
-            tile.image = white
+            tile.image = white2
         else:
-            tile.image = black
+            tile.image = black2
 
 for row in range(8):
     board_tiles.append([basics.to_tile(abc[column] + str(row + 1)) for column in range(8)])
@@ -39,30 +84,16 @@ knight_move = knight_move[(knight_move[:, 0] != 0) & (knight_move[:, 1] != 0)]
 bishop_move = np.array([[i, j] for i in range(-7, 8) for j in [-i, i]])
 bishop_move = bishop_move[ bishop_move[:, 0] * bishop_move[:, 1] != 0 ]
 
-queen_move = np.array(rook_move.tolist() + bishop_move.tolist())
+queen_move = []
+queen_move.append(rook_move.copy())
+queen_move.append(bishop_move.copy())
+queen_move = np.array(queen_move)
 
-king_move = [[i, j] for i in range(-1, 2) for j in range(-1, 2)]
-king_move.remove([0, 0])
-king_move = np.array(king_move)
-
-# images
-pawn_img1 = pygame.image.load('images/white_pawn2.png')
-pawn_img2 = pygame.image.load('images/black_pawn2.png')
-
-rook_img1 = pygame.image.load('images/white_rook2.png')
-rook_img2 = pygame.image.load('images/black_rook2.png')
-
-knight_img1 = pygame.image.load('images/white_knight2.png')
-knight_img2 = pygame.image.load('images/black_knight2.png')
-
-bishop_img1 = pygame.image.load('images/white_bishop2.png')
-bishop_img2 = pygame.image.load('images/black_bishop2.png')
-
-queen_img1 = pygame.image.load('images/white_queen2.png')
-queen_img2 = pygame.image.load('images/black_queen2.png')
-
-king_img1 = pygame.image.load('images/white_king2.png')
-king_img2 = pygame.image.load('images/black_king2.png')
+king_move1 = [[0, 1], [0, -1], [1, 0], [-1, 0]]
+king_move2 = [[1, 1], [1, -1], [-1, -1], [-1, 1]]
+king_move = []
+king_move.append(king_move1)
+king_move.append(king_move2)
 
 # pawns
 for tile in board_tiles[1]:
@@ -92,12 +123,11 @@ pieces.append(basics.Piece(board_tiles[7][2], bishop_move, 0, 'B', bishop_img2))
 pieces.append(basics.Piece(board_tiles[7][5], bishop_move, 0, 'B', bishop_img2))
 
 # queens
-pieces.append(basics.Piece(board_tiles[0][3], queen_move, 1, 'Q', queen_img1))
-pieces.append(basics.Piece(board_tiles[7][3], queen_move, 0, 'Q', queen_img2))
+pieces.append(basics.Queen(board_tiles[0][3], queen_move, 1, 'Q', queen_img1))
+pieces.append(basics.Queen(board_tiles[7][3], queen_move, 0, 'Q', queen_img2))
 
 # kings
-pieces.append(basics.Piece(board_tiles[0][4], king_move, 1, 'K', king_img1))
-pieces.append(basics.Piece(board_tiles[7][4], king_move, 0, 'K', king_img2))
-
+pieces.append(basics.King(board_tiles[0][4], king_move, 1, 'K', king_img1))
+pieces.append(basics.King(board_tiles[7][4], king_move, 0, 'K', king_img2))
 
 

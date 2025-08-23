@@ -1,9 +1,9 @@
 import numpy as np
 import pygame
 
-
 abc = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 board = []  # table of all tiles
+
 
 size = 800
 tile_size = 100
@@ -39,7 +39,7 @@ class Tile:
         self.rect = self.image.get_rect(bottomleft = pos)
 
         self.to_move = False
-        self.to_occupy = False
+        self.to_attack = False
 
     def distance(self, tile):  # Euclidean distance between tiles
         return float(((self.row - tile.row)**2 + (self.column - tile.column)**2)**0.5)
@@ -61,6 +61,9 @@ class Tile:
     def __str__(self):
         return self.name()
 
+    def __sub__(self, tile):
+        return create(Tile(self.row - tile.row, self.column - tile.column), board)
+
     def gt(self, tile1, tile2):
         if (self.distance(tile1) > self.distance(tile2)) and (tile1.distance(tile2) <= self.distance(tile1)):
             return True
@@ -80,12 +83,15 @@ class Piece:
         self.tile = create(tile, board)
         self.tile.occupied = True
         self.tile.occupant = self
-        self.move = move.tolist()  # coordinates [x,y] of possible moves
+        if not isinstance(move, list):
+            self.move = move.tolist()
+        else:
+            self.move = move
         self.color = color  # white = 1, black = 0
         self.is_dead = False
         self.name = name
         self.image = image
-
+        self.first_move = True
         tile_center = self.tile.rect.center
         self.rect = self.image.get_rect(center=tile_center)
 
@@ -113,18 +119,19 @@ class Piece:
     def occupy(self, tile):
         tile = create(tile, board)
         self.tile.occupied = False  # moving leaves the tile unoccupied
+        if tile.occupied:
+            tile.occupant.is_dead = True
+            tile.occupant.image = dead
+            print(self.name + "x" + tile.name())
+        else:
+            print(self.name + tile.name())
 
-        if tile in self.where_move():
-            if tile.occupied:
-                tile.occupant.is_dead = True
-                tile.occupant.image = dead
-                print(self.name + "x" + tile.name())
-            else:
-                print(self.name + tile.name())
-
-            tile.occupied = True
-            tile.occupant = self
-            self.tile = create(tile, board)
+        tile.occupied = True
+        tile.occupant = self
+        self.first_move = False
+        self.tile = create(tile, board)
+        tile_center = self.tile.rect.center
+        self.rect = self.image.get_rect(center=tile_center)
 
 
 class Knight(Piece):
@@ -148,8 +155,11 @@ class Knight(Piece):
 class Pawn(Piece):
     def __init__(self, tile, move, color, name, image=dead):
         super().__init__(tile, move, color, name, image)
-        self.first_move = True
         self.copy_move = self.move.copy()
+        if self.color:  # white
+            self.attack_move = [[1, 1], [-1, 1]]
+        else:  # black
+            self.attack_move = [[1, -1], [-1, -1]]
 
     def where_move(self):
         # allowing pawns to move two spaces in first move
@@ -160,27 +170,95 @@ class Pawn(Piece):
                 self.move.append([0, -2])
         else:
             self.move = self.copy_move
-        # standard
-        ret = []
-        for cord in self.move:  # list of [x,y] coordinates
-            dest = self.tile + Tile(cord[0], cord[1])
-            if dest.bounded() and not dest.occupied:
-                ret.append(dest)
+        ret = super().where_move()
+        to_rmv = []
         # pawn attack
-        if self.color:  # white
-            attack_move = np.array([[1, 1], [-1, 1]])
-        else:  # black
-            attack_move = np.array([[-1, 1], [-1, -1]])
-        for cord in attack_move:
+        for cord in self.attack_move:
             dest_attack = self.tile + Tile(cord[0], cord[1])
             if dest_attack.occupied:
                 if dest_attack.occupant.color != self.color:
                     ret.append(dest_attack)
+        ret = [tile for tile in ret if tile not in set(to_rmv)]
+        return ret
+
+
+class Queen(Piece):
+    def __init__(self, tile, move, color, name, image=dead):
+        super().__init__(tile, move, color, name, image)
+        self.rook = Piece(tile, move[0], color, '')
+        self.bishop = Piece(tile, move[1], color, '')
+        tile.occupant = self
+
+    def where_move(self):
+        return self.rook.where_move() + self.bishop.where_move()
+
+    def occupy(self, tile):
+        super().occupy(tile)
+        self.rook.tile = tile
+        self.bishop.tile = tile
+
+
+class King(Piece):
+    def __init__(self, tile, move, color, name, image=dead):
+        super().__init__(tile, move, color, name, image)
+        self.rook = Piece(tile, move[0], color, '')
+        self.bishop = Piece(tile, move[1], color, '')
+        self.castle_tile1 = 0
+        self.castle_tile2 = 0
+        tile.occupant = self
+
+    def can_castle(self, rook):
+        if rook.name == 'R' and rook.first_move and rook.color == self.color:
+            for tile in self.rook.where_move():
+                if tile in rook.where_move():
+                    self.castle_tile1 = tile + (tile - self.tile)
+                    self.castle_tile2 = tile
+                    return True
+        return False
+
+    def where_move(self):
+        ret = self.rook.where_move() + self.bishop.where_move()
+        to_rmv = []
+        # castling
+        if self.first_move:
+            for tile in [to_tile("A1"), to_tile("A8"), to_tile("H1"), to_tile("H8")]:
+                if tile.occupied:
+                    rook = tile.occupant
+                    if self.can_castle(rook):
+                        ret.append(self.castle_tile1)
+        # no sacrificing
+        for tile in board:
+            if tile.occupied:
+                piece = tile.occupant
+                if piece.color != self.color:
+                    if isinstance(piece, King):
+                        for tile2 in ret:
+                            if tile2 in (piece.rook.where_move() + piece.bishop.where_move()):
+                                to_rmv.append(tile2)
+                    elif isinstance(piece, Pawn):
+                        for tile2 in ret:
+                            for cord in piece.attack_move:
+                                if tile2 == (piece.tile + Tile(cord[0], cord[1])):
+                                    to_rmv.append(tile2)
+                    else:
+                        for tile2 in ret:
+                            if tile2 in piece.where_move():
+                                to_rmv.append(tile2)
+
+        ret = [tile for tile in ret if tile not in set(to_rmv)]
         return ret
 
     def occupy(self, tile):
-        super().occupy(self, tile)
+        if self.castle_tile1 == tile:
+            for tile0 in [to_tile("A1"), to_tile("A8"), to_tile("H1"), to_tile("H8")]:
+                if tile0.occupied:
+                    rook = tile0.occupant
+                    if tile in rook.where_move():
+                        rook.occupy(self.castle_tile2)
         self.first_move = False
+        super().occupy(tile)
+        self.rook.tile = tile
+        self.bishop.tile = tile
 
 
 print("Hello World!")
