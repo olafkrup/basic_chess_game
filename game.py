@@ -7,12 +7,13 @@ from sys import exit
 width = 1200
 height = 800
 
+pygame.init()
+
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Chess")
 clock = pygame.time.Clock()
 
 moving = 0
-
 moved = 0
 moved_from = 0
 
@@ -20,8 +21,36 @@ attacked = False
 
 turn = 1
 
+turn_text = pygame.font.Font(None, 80)
+
+text = pygame.font.Font(None, 35)
+
 while True:
     mouse_pos = pygame.mouse.get_pos()
+
+    if turn % 2 == 0:
+        clr1 = 'White'
+        clr2 = "Black"
+    else:
+        clr1 = 'Black'
+        clr2 = 'White'
+
+    turn_text_surface = turn_text.render("Turn " + str(turn), True, clr2)
+    turn_rect = turn_text_surface.get_rect(center=(1000, 150))
+
+    move1 = text.render(basics.moves[-3] + " ", True, clr1)
+    move2 = text.render(basics.moves[-2] + " ", True, clr2)
+    move3 = text.render(basics.moves[-1] + " ", True, clr1)
+
+    move_rect1 = move1.get_rect(center=(950, 350))
+    move_rect2 = move1.get_rect(center=(1000, 350))
+    move_rect3 = move1.get_rect(center=(1050, 350))
+
+    screen.blit(symbols.backgr, (800, 0))
+    screen.blit(move1, move_rect1)
+    screen.blit(move2, move_rect2)
+    screen.blit(move3, move_rect3)
+    screen.blit(turn_text_surface, turn_rect)
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:

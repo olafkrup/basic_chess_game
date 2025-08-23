@@ -9,6 +9,9 @@ board_tiles = []
 
 # images
 
+backgr = pygame.Surface((400, 800))
+backgr.fill((232, 192, 141))
+
 black = pygame.Surface((100, 100))
 black.fill('black')
 
@@ -56,6 +59,7 @@ king_img1 = pygame.image.load('images/white_king.png')
 king_img2 = pygame.image.load('images/black_king.png')
 
 # text
+
 
 
 # tile definition

@@ -3,6 +3,7 @@ import pygame
 
 abc = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 board = []  # table of all tiles
+moves = [" ", " ", " ... "]  #
 
 
 size = 800
@@ -36,7 +37,7 @@ class Tile:
         self.image = image
 
         pos = (self.row * tile_size, size - self.column * tile_size)
-        self.rect = self.image.get_rect(bottomleft = pos)
+        self.rect = self.image.get_rect(bottomleft=pos)
 
         self.to_move = False
         self.to_attack = False
@@ -49,8 +50,14 @@ class Tile:
             return True
         return False
 
-    def __add__(self, tile):
-        return create(Tile(self.row + tile.row, self.column + tile.column), board)
+    def cord(self):
+        return [self.row, self.column]
+
+    def __add__(self, cord):  # creates a new tile with added coordinates
+        return create(Tile(self.row + cord[0], self.column + cord[1]), board)
+
+    def __sub__(self, cord):
+        return create(Tile(self.row - cord[0], self.column - cord[1]), board)
 
     def __eq__(self, tile):
         return isinstance(tile, Tile) and self.row == tile.row and self.column == tile.column
@@ -60,9 +67,6 @@ class Tile:
 
     def __str__(self):
         return self.name()
-
-    def __sub__(self, tile):
-        return create(Tile(self.row - tile.row, self.column - tile.column), board)
 
     def gt(self, tile1, tile2):
         if (self.distance(tile1) > self.distance(tile2)) and (tile1.distance(tile2) <= self.distance(tile1)):
@@ -102,7 +106,7 @@ class Piece:
         ret = []
         to_rmv = []
         for cord in self.move:  # list of [x,y] coordinates
-            dest = self.tile + Tile(cord[0], cord[1])
+            dest = self.tile + cord
             if dest.bounded():
                 ret.append(dest)
         for tile in ret:
@@ -116,15 +120,16 @@ class Piece:
         ret = [tile for tile in ret if tile not in set(to_rmv)]
         return ret
 
-    def occupy(self, tile):
+    def occupy(self, tile, if_print=True):
         tile = create(tile, board)
         self.tile.occupied = False  # moving leaves the tile unoccupied
         if tile.occupied:
             tile.occupant.is_dead = True
             tile.occupant.image = dead
-            print(self.name + "x" + tile.name())
-        else:
-            print(self.name + tile.name())
+            if if_print:
+                moves.append(self.name + "x" + tile.name())
+        elif if_print:
+            moves.append(self.name + tile.name())
 
         tile.occupied = True
         tile.occupant = self
@@ -140,7 +145,7 @@ class Knight(Piece):
         to_rmv = []
 
         for cord in self.move:  # list of [x,y] coordinates
-            dest = self.tile + Tile(cord[0], cord[1])
+            dest = self.tile + cord
             if dest.bounded():
                 ret.append(dest)
         # attacking (with allowed jumping)
@@ -174,7 +179,7 @@ class Pawn(Piece):
         to_rmv = []
         # pawn attack
         for cord in self.attack_move:
-            dest_attack = self.tile + Tile(cord[0], cord[1])
+            dest_attack = self.tile + cord
             if dest_attack.occupied:
                 if dest_attack.occupant.color != self.color:
                     ret.append(dest_attack)
@@ -211,7 +216,7 @@ class King(Piece):
         if rook.name == 'R' and rook.first_move and rook.color == self.color:
             for tile in self.rook.where_move():
                 if tile in rook.where_move():
-                    self.castle_tile1 = tile + (tile - self.tile)
+                    self.castle_tile1 = tile + (tile - self.tile.cord()).cord()
                     self.castle_tile2 = tile
                     return True
         return False
@@ -238,7 +243,7 @@ class King(Piece):
                     elif isinstance(piece, Pawn):
                         for tile2 in ret:
                             for cord in piece.attack_move:
-                                if tile2 == (piece.tile + Tile(cord[0], cord[1])):
+                                if tile2 == (piece.tile + cord):
                                     to_rmv.append(tile2)
                     else:
                         for tile2 in ret:
