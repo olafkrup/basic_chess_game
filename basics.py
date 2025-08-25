@@ -1,10 +1,8 @@
-import numpy as np
 import pygame
 
 abc = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
-board = []  # table of all tiles
-moves = [" ", " ", " ... "]  #
-
+board = []  # set of all tiles
+moves = [" ", " ", " ... "]
 
 size = 800
 tile_size = 100
@@ -81,8 +79,35 @@ class Tile:
             return 1
         return 0
 
+    def attacked(self, color):  # color of the attacked
+        for piece in Piece.pieces:
+            if piece.color != color:
+                if isinstance(piece, King):
+                    if self in (piece.rook.where_move() + piece.bishop.where_move()):
+                        return True
+                elif isinstance(piece, Pawn):
+                    for cord in piece.attack_move:
+                        if self == (piece.tile + cord):
+                            return True
+                else:
+                    if self in piece.where_move():
+                        return True
+        return False
+
+    def if_checkblock(self, attack_piece):
+        ur_king = None
+        for king in King.kings:
+            if king.color != attack_piece.color:
+                ur_king = king
+        if self in attack_piece.possible_attacks() and attack_piece.checking:
+            if attack_piece.tile.gt(ur_king.tile, self):
+                return True
+        return False
+
 
 class Piece:
+    pieces = []
+
     def __init__(self, tile, move, color, name, image=dead):
         self.tile = create(tile, board)
         self.tile.occupied = True
@@ -98,24 +123,66 @@ class Piece:
         self.first_move = True
         tile_center = self.tile.rect.center
         self.rect = self.image.get_rect(center=tile_center)
+        self.checking = False
+        self.if_endanger = False
+        self.pos_atk = []
 
     def __str__(self):
         return self.name + self.tile.name()
 
-    def where_move(self):
+    def possible_attacks(self):
+        for king in King.kings:
+            if king.color != self.color:
+                op_king = king
         ret = []
         to_rmv = []
-        for cord in self.move:  # list of [x,y] coordinates
+        for cord in self.move:
             dest = self.tile + cord
             if dest.bounded():
                 ret.append(dest)
+        for tile in ret:
+            if tile.occupied:
+                if tile.occupant.color == self.color:
+                    for tile2 in ret:
+                        if self.tile.gt(tile2, tile):
+                            to_rmv.append(tile2)
+                else:
+                    for tile2 in ret:
+                        if self.tile.gt(tile2, tile) and tile2.occupied:
+                            if tile2 != op_king.tile:
+                                to_rmv.append(tile2)
+                                for tile3 in ret:
+                                    if self.tile.gt(tile3, tile2):
+                                        to_rmv.append(tile3)
+        ret = [tile for tile in ret if tile not in set(to_rmv)]
+        if op_king.tile in ret:
+            self.checking = True
+        else:
+            self.checking = False
+        return ret
+
+    def where_move(self):
+        to_rmv = []
+        ret = self.possible_attacks()
         for tile in ret:
             if tile.occupied:  # disables jumping
                 for tile2 in ret:
                     if self.tile.gt(tile2, tile):
                         to_rmv.append(tile2)
-                if tile.occupant.color == self.color:  # no friendly-fire
+                if tile.occupant == 0 or tile.occupant.color == self.color:  # no friendly-fire
                     to_rmv.append(tile)
+
+        ret = [tile for tile in ret if tile not in set(to_rmv)]
+        culprits = []
+        for piece in Piece.pieces:
+            if piece.checking and piece.color != self.color:
+                culprits.append(piece)
+
+        for piece in culprits:
+            if self.tile.if_checkblock(piece):
+                for tile in ret:
+                    if not tile.if_checkblock(piece) and tile != piece.tile:
+                        to_rmv.append(tile)
 
         ret = [tile for tile in ret if tile not in set(to_rmv)]
         return ret
@@ -138,6 +205,13 @@ class Piece:
         tile_center = self.tile.rect.center
         self.rect = self.image.get_rect(center=tile_center)
 
+        for king in King.kings:
+            if king.tile.attacked(king.color):
+                king.check = True
+                print("check")
+            else:
+                king.check = False
+
 
 class Knight(Piece):
     def where_move(self):
@@ -153,6 +227,20 @@ class Knight(Piece):
             if tile.occupied and tile.occupant.color == self.color:  # no friendly-fire
                 to_rmv.append(tile)
 
+        culprits = []
+        for piece in Piece.pieces:
+            if isinstance(piece, Queen):
+                culprits.append(piece.rook)
+                culprits.append(piece.bishop)
+            if piece.checking and piece.color != self.color:
+                culprits.append(piece)
+
+        for piece in culprits:
+            if self.tile.if_checkblock(piece):
+                for tile in ret:
+                    if not tile.if_checkblock(piece) and tile != piece.tile:
+                        to_rmv.append(tile)
+
         ret = [tile for tile in ret if tile not in set(to_rmv)]
         return ret
 
@@ -167,6 +255,7 @@ class Pawn(Piece):
             self.attack_move = [[1, -1], [-1, -1]]
 
     def where_move(self):
+        ret = []
         # allowing pawns to move two spaces in first move
         if self.first_move:
             if self.color:
@@ -176,13 +265,23 @@ class Pawn(Piece):
         else:
             self.move = self.copy_move
         ret = super().where_move()
-        to_rmv = []
+        to_rmv = [tile for tile in ret if tile.occupied]
         # pawn attack
         for cord in self.attack_move:
             dest_attack = self.tile + cord
             if dest_attack.occupied:
                 if dest_attack.occupant.color != self.color:
                     ret.append(dest_attack)
+        culprits = []
+        for piece in Piece.pieces:
+            if piece.checking and piece.color != self.color:
+                culprits.append(piece)
+
+        for piece in culprits:
+            if self.tile.if_checkblock(piece):
+                for tile in ret:
+                    if not tile.if_checkblock(piece) and tile != piece.tile:
+                        to_rmv.append(tile)
         ret = [tile for tile in ret if tile not in set(to_rmv)]
         return ret
 
@@ -195,15 +294,24 @@ class Queen(Piece):
         tile.occupant = self
 
     def where_move(self):
+        self.possible_attacks()
         return self.rook.where_move() + self.bishop.where_move()
 
-    def occupy(self, tile):
+    def occupy(self, tile, if_print=True):
         super().occupy(tile)
         self.rook.tile = tile
         self.bishop.tile = tile
 
+    def possible_attacks(self):
+        ret = self.rook.possible_attacks() + self.bishop.possible_attacks()
+        if self.rook.checking or self.bishop.checking:
+            self.checking = True
+        return ret
+
 
 class King(Piece):
+    kings = []
+
     def __init__(self, tile, move, color, name, image=dead):
         super().__init__(tile, move, color, name, image)
         self.rook = Piece(tile, move[0], color, '')
@@ -211,9 +319,11 @@ class King(Piece):
         self.castle_tile1 = 0
         self.castle_tile2 = 0
         tile.occupant = self
+        King.kings.append(self)
+        self.check = False
 
     def can_castle(self, rook):
-        if rook.name == 'R' and rook.first_move and rook.color == self.color:
+        if isinstance(rook, Rook) and rook.first_move and rook.color == self.color:
             for tile in self.rook.where_move():
                 if tile in rook.where_move():
                     self.castle_tile1 = tile + (tile - self.tile.cord()).cord()
@@ -226,44 +336,34 @@ class King(Piece):
         to_rmv = []
         # castling
         if self.first_move:
-            for tile in [to_tile("A1"), to_tile("A8"), to_tile("H1"), to_tile("H8")]:
-                if tile.occupied:
-                    rook = tile.occupant
-                    if self.can_castle(rook):
-                        ret.append(self.castle_tile1)
+            for rook in Rook.rooks:
+                if self.can_castle(rook):
+                    ret.append(self.castle_tile1)
         # no sacrificing
-        for tile in board:
-            if tile.occupied:
-                piece = tile.occupant
-                if piece.color != self.color:
-                    if isinstance(piece, King):
-                        for tile2 in ret:
-                            if tile2 in (piece.rook.where_move() + piece.bishop.where_move()):
-                                to_rmv.append(tile2)
-                    elif isinstance(piece, Pawn):
-                        for tile2 in ret:
-                            for cord in piece.attack_move:
-                                if tile2 == (piece.tile + cord):
-                                    to_rmv.append(tile2)
-                    else:
-                        for tile2 in ret:
-                            if tile2 in piece.where_move():
-                                to_rmv.append(tile2)
+        for tile in ret:
+            if tile.attacked(self.color):
+                to_rmv.append(tile)
 
         ret = [tile for tile in ret if tile not in set(to_rmv)]
         return ret
 
-    def occupy(self, tile):
+    def occupy(self, tile, if_print=True):
         if self.castle_tile1 == tile:
-            for tile0 in [to_tile("A1"), to_tile("A8"), to_tile("H1"), to_tile("H8")]:
-                if tile0.occupied:
-                    rook = tile0.occupant
-                    if tile in rook.where_move():
-                        rook.occupy(self.castle_tile2)
+            for rook in Rook.rooks:
+                if tile in rook.where_move():
+                    rook.occupy(self.castle_tile2)
         self.first_move = False
         super().occupy(tile)
         self.rook.tile = tile
         self.bishop.tile = tile
+
+
+class Rook(Piece):
+    rooks = []
+
+    def __init__(self, tile, move, color, name, image=dead):
+        super().__init__(tile, move, color, name, image)
+        Rook.rooks.append(self)
 
 
 print("Hello World!")

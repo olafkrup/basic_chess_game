@@ -25,7 +25,10 @@ turn_text = pygame.font.Font(None, 80)
 
 text = pygame.font.Font(None, 35)
 
+sanity_check = []
+
 while True:
+    screen.fill((0, 0, 0))
     mouse_pos = pygame.mouse.get_pos()
 
     if turn % 2 == 0:
@@ -42,9 +45,9 @@ while True:
     move2 = text.render(basics.moves[-2] + " ", True, clr2)
     move3 = text.render(basics.moves[-1] + " ", True, clr1)
 
-    move_rect1 = move1.get_rect(center=(950, 350))
+    move_rect1 = move1.get_rect(center=(900, 350))
     move_rect2 = move1.get_rect(center=(1000, 350))
-    move_rect3 = move1.get_rect(center=(1050, 350))
+    move_rect3 = move1.get_rect(center=(1100, 350))
 
     screen.blit(symbols.backgr, (800, 0))
     screen.blit(move1, move_rect1)
@@ -57,7 +60,7 @@ while True:
             pygame.quit()
             exit()
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            for piece in symbols.pieces:
+            for piece in basics.Piece.pieces:
                 if piece.tile.rect.collidepoint(mouse_pos) \
                         and not piece.tile.to_move and turn % 2 == piece.color:
                     moving = piece
@@ -76,6 +79,8 @@ while True:
                         attacked = True
                     moving.occupy(tile)
                     turn += 1
+                    for piece in basics.Piece.pieces:
+                        sanity_check = piece.where_move()
                     moved = moving
                     moving = 0
                     for tile2 in basics.board:
@@ -88,9 +93,9 @@ while True:
     if moving != 0:
         screen.blit(symbols.moving_img, moving.tile.rect.topleft)
 
-    for piece in symbols.pieces:
+    for piece in basics.Piece.pieces:
         if piece.is_dead:
-            symbols.pieces.remove(piece)
+            basics.Piece.pieces.remove(piece)
         else:
             screen.blit(piece.image, piece.tile.rect)
 
