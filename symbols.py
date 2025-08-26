@@ -8,8 +8,8 @@ board_tiles = []
 
 # images
 
-backgr = pygame.Surface((400, 800))
-backgr.fill((232, 192, 141))
+backgr = pygame.Surface((1200, 800))
+backgr.fill((128, 128, 128))
 
 black = pygame.Surface((100, 100))
 black.fill('black')
@@ -122,5 +122,4 @@ basics.Piece.pieces.append(basics.Queen(board_tiles[7][3], queen_move, 0, 'Q', q
 basics.Piece.pieces.append(basics.King(board_tiles[0][4], king_move, 1, 'K', king_img1))
 basics.Piece.pieces.append(basics.King(board_tiles[7][4], king_move, 0, 'K', king_img2))
 
-for king in basics.King.kings:
-    print(king)
+

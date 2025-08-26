@@ -1,6 +1,5 @@
 import basics
 import symbols
-import numpy as np
 import pygame
 from sys import exit
 
@@ -27,7 +26,9 @@ text = pygame.font.Font(None, 35)
 
 sanity_check = []
 
-while True:
+over = False
+
+while not over:
     screen.fill((0, 0, 0))
     mouse_pos = pygame.mouse.get_pos()
 
@@ -78,14 +79,32 @@ while True:
                     if tile.occupied:
                         attacked = True
                     moving.occupy(tile)
+                    all_moves = set()
                     turn += 1
                     for piece in basics.Piece.pieces:
-                        sanity_check = piece.where_move()
+                        if turn % 2 == piece.color:
+                            piece.really_checking = False
+                            for tile2 in piece.where_move():
+                                if not piece.virtual:
+                                    all_moves.add(tile2)
+                        else:
+                            sanity_check = piece.where_move()
+
+                    if len(all_moves) == 0:
+                        over = True
+                        pygame.quit()
+                        exit()
+                        print("gameover")
+                    else:
+                        print(len(all_moves))
+                    print('\n')
+
                     moved = moving
                     moving = 0
                     for tile2 in basics.board:
                         tile2.to_move = False
                         tile2.to_attack = False
+                    break
 
     for tile in basics.board:
         screen.blit(tile.image, tile.rect)
