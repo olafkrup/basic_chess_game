@@ -8,7 +8,7 @@ board_tiles = []
 
 # images
 
-backgr = pygame.Surface((1200, 800))
+backgr = pygame.Surface((1200, 1000))
 backgr.fill((128, 128, 128))
 
 black = pygame.Surface((100, 100))

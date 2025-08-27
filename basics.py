@@ -18,6 +18,17 @@ def create(tile, board0):  # ensures tiles arent duplicated
     return tile
 
 
+def rmv_duplicates(list0):
+    ret = []
+    s = set()
+    for x in list0:
+        m = tuple(x)
+        if m not in s:
+            s.add(m)
+            ret.append(x)
+    return ret
+
+
 def to_tile(notation):  # converts a chess notation into a tile
     if type(notation) == str:
         if len(notation) == 2:
@@ -204,11 +215,11 @@ class Piece:
         if op_king.tile in ret:
             self.really_checking = True
             op_king.check = True
-            print("check")
         else:
             self.really_checking = False
 
         ret = [tile for tile in ret if tile not in set(to_rmv)]
+        ret = list(set(ret))
         return ret
 
     def occupy(self, tile, if_print=True):
@@ -273,32 +284,37 @@ class Knight(Piece):
         if op_king.tile in ret:
             self.really_checking = True
             op_king.check = True
-            print("check")
         else:
             self.really_checking = False
 
         ret = [tile for tile in ret if tile not in set(to_rmv)]
-
-        ret = [tile for tile in ret if tile not in set(to_rmv)]
+        ret = list(set(ret))
         return ret
 
 
 class Pawn(Piece):
+    pawns = []
     def __init__(self, tile, move, color, name, image=dead):
         super().__init__(tile, move, color, name, image)
         self.copy_move = self.move.copy()
         if self.color:  # white
             self.attack_move = [[1, 1], [-1, 1]]
+            self.last_column = 7
         else:  # black
             self.attack_move = [[1, -1], [-1, -1]]
+            self.last_column = 0
+        self.promoted = False
+        Pawn.pawns.append(self)
 
     def where_move(self):
         # allowing pawns to move two spaces in first move
         if self.first_move:
             if self.color:
                 self.move.append([0, 2])
+                self.move = rmv_duplicates(self.move)
             else:
                 self.move.append([0, -2])
+                self.move = rmv_duplicates(self.move)
         else:
             self.move = self.copy_move
         ret = super().where_move()
@@ -320,7 +336,13 @@ class Pawn(Piece):
                     if not tile.if_checkblock(piece) and tile != piece.tile:
                         to_rmv.append(tile)
         ret = [tile for tile in ret if tile not in set(to_rmv)]
+        ret = list(set(ret))
         return ret
+
+    def occupy(self, tile, if_print=False):
+        super().occupy(tile, if_print)
+        if tile.column == self.last_column:
+            self.promoted = True
 
 
 class Queen(Piece):
@@ -387,6 +409,7 @@ class King(Piece):
                 tile.occupied = True
 
         ret = [tile for tile in ret if tile not in set(to_rmv)]
+        ret = list(set(ret))
         return ret
 
     def occupy(self, tile, if_print=True):

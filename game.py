@@ -4,7 +4,7 @@ import pygame
 from sys import exit
 
 width = 1200
-height = 800
+height = 1000
 
 pygame.init()
 
@@ -50,7 +50,7 @@ while not over:
     move_rect2 = move1.get_rect(center=(1000, 350))
     move_rect3 = move1.get_rect(center=(1100, 350))
 
-    screen.blit(symbols.backgr, (800, 0))
+    screen.blit(symbols.backgr, (0, 0))
     screen.blit(move1, move_rect1)
     screen.blit(move2, move_rect2)
     screen.blit(move3, move_rect3)
@@ -58,8 +58,7 @@ while not over:
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            pygame.quit()
-            exit()
+            over = True
         elif event.type == pygame.MOUSEBUTTONDOWN:
             for piece in basics.Piece.pieces:
                 if piece.tile.rect.collidepoint(mouse_pos) \
@@ -79,25 +78,38 @@ while not over:
                     if tile.occupied:
                         attacked = True
                     moving.occupy(tile)
-                    all_moves = set()
+                    all_moves = []
                     turn += 1
                     for piece in basics.Piece.pieces:
+                        sanity_check = piece.where_move()
                         if turn % 2 == piece.color:
                             piece.really_checking = False
-                            for tile2 in piece.where_move():
-                                if not piece.virtual:
-                                    all_moves.add(tile2)
                         else:
-                            sanity_check = piece.where_move()
-
+                            if isinstance(piece, basics.King):
+                                piece.check = False
+                    for piece in basics.Piece.pieces:
+                        if turn % 2 == piece.color:
+                            for tile2 in piece.where_move():
+                                all_moves.append(tile2)
                     if len(all_moves) == 0:
-                        over = True
-                        pygame.quit()
-                        exit()
-                        print("gameover")
+                        for king in basics.King.kings:
+                            if king.color == turn % 2:
+                                if king.check:
+                                    print("Checkmate!")
+                                else:
+                                    print("Stalemate")
                     else:
-                        print(len(all_moves))
-                    print('\n')
+                        for king in basics.King.kings:
+                            if king.check:
+                                print("Check")
+                    for pawn in basics.Pawn.pawns:
+                        if pawn.promoted:
+                            if pawn.color:
+                                basics.Piece.pieces.append(basics.Queen(pawn.tile, symbols.queen_move, pawn.color, 'Q', symbols.queen_img1))
+                            else:
+                                basics.Piece.pieces.append(basics.Queen(pawn.tile, symbols.queen_move, pawn.color, 'Q', symbols.queen_img2))
+                            basics.Pawn.pawns.remove(pawn)
+                            pawn.is_dead = True
 
                     moved = moving
                     moving = 0
@@ -134,4 +146,7 @@ while not over:
                 screen.blit(symbols.move_img, tile.rect.topleft)
 
     pygame.display.update()
-    clock.tick(60)
+    clock.tick(30)
+
+pygame.quit()
+exit()
