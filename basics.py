@@ -136,13 +136,14 @@ class Piece:
         self.first_move = True
         tile_center = self.tile.rect.center
         self.rect = self.image.get_rect(center=tile_center)
-        self.checking = False
-        self.really_checking = False
-        self.virtual = virtual
+        self.checking = False  # possibility of king check
+        self.really_checking = False  # king check
+        self.virtual = virtual  # if a real or arbitrary piece
 
     def __str__(self):
         return self.name + self.tile.name()
 
+    # list of all tiles which can be attacked if the enemy moves out of the way
     def possible_attacks(self):
         for king in King.kings:
             if king.color != self.color:
@@ -174,6 +175,7 @@ class Piece:
             self.checking = False
         return ret
 
+    # list of all available tiles, where a piece can move
     def where_move(self):
         to_rmv = []
         ret = self.possible_attacks()
@@ -294,8 +296,9 @@ class Knight(Piece):
 
 class Pawn(Piece):
     pawns = []
-    def __init__(self, tile, move, color, name, image=dead):
-        super().__init__(tile, move, color, name, image)
+
+    def __init__(self, tile, move, color, name, image=dead, virtual=False):
+        super().__init__(tile, move, color, name, image, virtual)
         self.copy_move = self.move.copy()
         if self.color:  # white
             self.attack_move = [[1, 1], [-1, 1]]
@@ -391,25 +394,42 @@ class King(Piece):
         return False
 
     def where_move(self):
-        ret = self.rook.where_move() + self.bishop.where_move()
         to_rmv = []
-        # castling
-        if self.first_move:
-            for rook in Rook.rooks:
-                if self.can_castle(rook):
-                    ret.append(self.castle_tile1)
-        # no sacrificing
-        for tile in ret:
-            if tile.attacked(self.color):
-                to_rmv.append(tile)
-            if tile.occupied:
-                tile.occupied = False
+        if not self.check:
+            ret = self.rook.where_move() + self.bishop.where_move()
+            # castling
+            if self.first_move:
+                for rook in Rook.rooks:
+                    if self.can_castle(rook):
+                        ret.append(self.castle_tile1)
+            # no sacrificing
+            for tile in ret:
                 if tile.attacked(self.color):
                     to_rmv.append(tile)
-                tile.occupied = True
+                if tile.occupied:
+                    tile.occupied = False
+                    if tile.attacked(self.color):
+                        to_rmv.append(tile)
+                    tile.occupied = True
+        else:
+            self.check = False
+            ret = self.rook.where_move() + self.bishop.where_move()
+            for tile in ret:
+                if tile.attacked(self.color):
+                    to_rmv.append(tile)
+                elif tile.occupied:
+                    tile.occupied = False
+                    if tile.attacked(self.color):
+                        to_rmv.append(tile)
+                    tile.occupied = True
+                else:
+                    for piece in Piece.pieces:
+                        if piece.really_checking:
+                            if tile in piece.possible_attacks():
+                                to_rmv.append(tile)
+            self.check = True
 
         ret = [tile for tile in ret if tile not in set(to_rmv)]
-        ret = list(set(ret))
         return ret
 
     def occupy(self, tile, if_print=True):

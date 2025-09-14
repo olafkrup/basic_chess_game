@@ -18,6 +18,10 @@ moved_from = 0
 
 attacked = False
 
+check = False
+
+checkmate = False
+
 turn = 1
 
 turn_text = pygame.font.Font(None, 80)
@@ -32,6 +36,7 @@ while not over:
     screen.fill((0, 0, 0))
     mouse_pos = pygame.mouse.get_pos()
 
+    # visuals representing which color moves
     if turn % 2 == 0:
         clr1 = 'White'
         clr2 = "Black"
@@ -42,6 +47,13 @@ while not over:
     turn_text_surface = turn_text.render("Turn " + str(turn), True, clr2)
     turn_rect = turn_text_surface.get_rect(center=(1000, 150))
 
+    check_text = turn_text.render("Check!", True, clr2)
+    check_rect = check_text.get_rect(center = (1000, 500))
+
+    checkmate_text = turn_text.render("Checkmate!", True, clr2)
+    checkmate_rect = checkmate_text.get_rect(center = (1000, 500))
+
+    # displaying last 3 moves
     move1 = text.render(basics.moves[-3] + " ", True, clr1)
     move2 = text.render(basics.moves[-2] + " ", True, clr2)
     move3 = text.render(basics.moves[-1] + " ", True, clr1)
@@ -59,6 +71,7 @@ while not over:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             over = True
+        # showing available moves
         elif event.type == pygame.MOUSEBUTTONDOWN:
             for piece in basics.Piece.pieces:
                 if piece.tile.rect.collidepoint(mouse_pos) \
@@ -71,6 +84,7 @@ while not over:
                         tile.to_move = True
                         if tile.occupied:
                             tile.to_attack = True
+            # moving pieces
             for tile in basics.board:
                 if tile.rect.collidepoint(mouse_pos) and tile.to_move:
                     attacked = False
@@ -80,6 +94,18 @@ while not over:
                     moving.occupy(tile)
                     all_moves = []
                     turn += 1
+                    # pawn promotion
+                    for pawn in basics.Pawn.pawns:
+                        if pawn.promoted:
+                            if pawn.color:
+                                basics.Piece.pieces.append(basics.Queen(pawn.tile, symbols.queen_move, pawn.color, 'Q', symbols.queen_img1))
+                                pawn.tile.occupant = basics.Piece.pieces[-1]
+                            else:
+                                basics.Piece.pieces.append(basics.Queen(pawn.tile, symbols.queen_move, pawn.color, 'Q', symbols.queen_img2))
+                                pawn.tile.occupant = basics.Piece.pieces[-1]
+                            basics.Pawn.pawns.remove(pawn)
+                            pawn.is_dead = True
+                    # checking all possible moves in order to update check conditions etc
                     for piece in basics.Piece.pieces:
                         sanity_check = piece.where_move()
                         if turn % 2 == piece.color:
@@ -87,6 +113,7 @@ while not over:
                         else:
                             if isinstance(piece, basics.King):
                                 piece.check = False
+                    # checking if the player has any moves
                     for piece in basics.Piece.pieces:
                         if turn % 2 == piece.color:
                             for tile2 in piece.where_move():
@@ -96,21 +123,16 @@ while not over:
                             if king.color == turn % 2:
                                 if king.check:
                                     print("Checkmate!")
+                                    checkmate = True
                                 else:
                                     print("Stalemate")
                     else:
                         for king in basics.King.kings:
                             if king.check:
                                 print("Check")
-                    for pawn in basics.Pawn.pawns:
-                        if pawn.promoted:
-                            if pawn.color:
-                                basics.Piece.pieces.append(basics.Queen(pawn.tile, symbols.queen_move, pawn.color, 'Q', symbols.queen_img1))
+                                check = True
                             else:
-                                basics.Piece.pieces.append(basics.Queen(pawn.tile, symbols.queen_move, pawn.color, 'Q', symbols.queen_img2))
-                            basics.Pawn.pawns.remove(pawn)
-                            pawn.is_dead = True
-
+                                check = False
                     moved = moving
                     moving = 0
                     for tile2 in basics.board:
@@ -124,12 +146,17 @@ while not over:
     if moving != 0:
         screen.blit(symbols.moving_img, moving.tile.rect.topleft)
 
+    # displaying and removing pieces
     for piece in basics.Piece.pieces:
         if piece.is_dead:
+            if isinstance(piece, basics.Queen):
+                basics.Piece.pieces.remove(piece.rook)
+                basics.Piece.pieces.remove(piece.bishop)
             basics.Piece.pieces.remove(piece)
         else:
             screen.blit(piece.image, piece.tile.rect)
 
+    # highlighting some pieces
     if moved != 0:
         if attacked:
             screen.blit(symbols.attacked_img, moved.tile.rect.topleft)
@@ -137,6 +164,13 @@ while not over:
         else:
             screen.blit(symbols.moved_img, moved.tile.rect.topleft)
             screen.blit(symbols.moved_img, moved_from.rect.topleft)
+        if checkmate:
+            screen.blit(checkmate_text, checkmate_rect)
+        else:
+            for king in basics.King.kings:
+                if king.check:
+                    screen.blit(symbols.check_img, king.tile.rect.topleft)
+                    screen.blit(check_text, check_rect)
 
     for tile in basics.board:
         if tile.to_move:

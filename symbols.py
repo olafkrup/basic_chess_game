@@ -39,6 +39,9 @@ attack_img.set_alpha(150)
 attacked_img = pygame.image.load('images/attacked_img.png')
 attacked_img.set_alpha(150)
 
+check_img = pygame.image.load('images/check_img.png')
+check_img.set_alpha(150)
+
 pawn_img1 = pygame.image.load('images/white_pawn.png')
 pawn_img2 = pygame.image.load('images/black_pawn.png')
 
@@ -54,7 +57,7 @@ bishop_img2 = pygame.image.load('images/black_bishop.png')
 queen_img1 = pygame.image.load('images/white_queen.png')
 queen_img2 = pygame.image.load('images/black_queen.png')
 
-king_img1 = pygame.image.load('images/white_king.png')
+king_img1 = pygame.image.load('images/white_king3.png')
 king_img2 = pygame.image.load('images/black_king.png')
 
 # tile definition
